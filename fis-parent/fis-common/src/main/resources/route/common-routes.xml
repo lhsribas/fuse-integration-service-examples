@@ -1,0 +1,56 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<beans xmlns="http://www.springframework.org/schema/beans"
+       xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+       xsi:schemaLocation="http://www.springframework.org/schema/beans        http://www.springframework.org/schema/beans/spring-beans.xsd        http://camel.apache.org/schema/spring        http://camel.apache.org/schema/spring/camel-spring.xsd">
+
+    <bean class="br.com.ribas.fis.logging.processor.LoggingProcessor" id="loggingProcessor"/>
+    <bean class="br.com.ribas.fis.logging.processor.RequisitionIDProcessor" id="requisitionIDProcessor"/>
+    <bean class="br.com.ribas.fis.logging.processor.NormalizerProcessor" id="normalizerProcessor"/>
+
+
+    <routeContext id="common-routes" xmlns="http://camel.apache.org/schema/spring">
+
+        <route id="direct-logger-wiretap-begin">
+            <from uri="direct:logger-wiretap-begin"/>
+            <process ref="requisitionIDProcessor"/>
+            <process ref="loggingProcessor"/>
+            <to uri="direct:logger-wiretap-msg"/>
+        </route>
+
+        <route id="direct-logger-wiretap-end">
+            <from uri="direct:logger-wiretap-end"/>
+            <to uri="direct:logger-wiretap-msg"/>
+        </route>
+
+        <route id="direct-logger-wiretap-msg">
+            <from uri="direct:logger-wiretap-msg"/>
+            <wireTap uri="direct:logger-log"/>
+        </route>
+
+        <route id="direct-logger-log">
+            <from uri="direct:logger-log"/>
+            <process ref="normalizerProcessor"/>
+            <choice>
+                <when>
+                    <simple>${exchangeProperty[hasErrors]} != null</simple>
+                    <log logName="breadcrumb-logger-error"
+                         loggingLevel="ERROR"
+                         message="${body}"/>
+                </when>
+                <otherwise>
+                    <log logName="breadcrumb-logger-info"
+                         loggingLevel="INFO"
+                         message="${body}"/>
+
+                </otherwise>
+            </choice>
+
+            <log logName="breadcrumb-logger-debug"
+                 loggingLevel="DEBUG"
+                 message="breadcrumb-logger-info Logged..."/>
+
+        </route>
+
+    </routeContext>
+
+</beans>
